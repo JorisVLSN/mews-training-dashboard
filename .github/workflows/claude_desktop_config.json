@@ -1,0 +1,10 @@
+
+  "mcpServers": {
+    "powerbi-mcp-server": {
+      "command": "C:\\Users\\Joris\\.vscode\\extensions\\analysis-services.powerbi-modeling-mcp-0.4.0-win32-x64\\server\\powerbi-modeling-mcp.exe",
+      "args": [
+        "--start"
+      ]
+    }
+  }
+}
