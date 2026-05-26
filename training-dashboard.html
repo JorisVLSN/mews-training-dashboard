@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POS Onboarding · Training Dashboard</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+    :root {
+      --bg:      #0a0d14;
+      --surface: #111520;
+      --card:    #161c2e;
+      --border:  #1e2640;
+      --muted:   #3a4466;
+      --text:    #e2e8f0;
+      --subtle:  #8892b0;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 32px 24px 64px;
+    }
+
+    /* ── LOADING OVERLAY ── */
+    #loading-overlay {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 100; gap: 16px;
+    }
+    .spinner {
+      width: 48px; height: 48px;
+      border: 3px solid var(--border);
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { color: var(--subtle); font-size: 14px; }
+
+    /* ── ERROR BANNER ── */
+    #error-banner {
+      display: none;
+      background: #2d1a1a;
+      border: 1px solid #7f1d1d;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      align-items: center; gap: 12px;
+      color: #fca5a5;
+      font-size: 14px;
+    }
+    .error-icon { font-size: 20px; flex-shrink: 0; }
+    #error-banner button {
+      margin-left: auto;
+      background: #7f1d1d;
+      border: none; border-radius: 8px;
+      color: #fca5a5; padding: 6px 14px;
+      cursor: pointer; font-size: 13px; font-weight: 600;
+    }
+    #error-banner button:hover { background: #991b1b; }
+
+    /* ── HEADER ── */
+    .header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .header-label {
+      font-size: 11px; font-weight: 700; letter-spacing: 3px;
+      text-transform: uppercase; color: var(--subtle);
+      margin-bottom: 12px;
+    }
+    .header h1 {
+      font-size: 38px; font-weight: 900; letter-spacing: -1px;
+      background: linear-gradient(135deg, #38bdf8, #a78bfa, #f472b6);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; margin-bottom: 8px;
+    }
+    .header .subtitle { color: var(--subtle); font-size: 14px; }
+    .header .subtitle span { color: var(--text); font-weight: 600; }
+
+    /* ── PROGRAM OVERVIEW ── */
+    .program-overview {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 32px;
+      margin-bottom: 24px;
+    }
+    .program-top {
+      display: flex; align-items: flex-start; gap: 32px; margin-bottom: 28px;
+    }
+    .program-title-block { flex: 1; }
+    .program-section-label {
+      font-size: 11px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--subtle); margin-bottom: 6px;
+    }
+    .program-big-pct {
+      font-size: 52px; font-weight: 900; line-height: 1;
+      font-family: 'JetBrains Mono', monospace;
+      background: linear-gradient(135deg, #38bdf8, #a78bfa, #f472b6);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .program-big-sub { font-size: 13px; color: var(--subtle); margin-top: 6px; }
+    .program-big-sub span { color: var(--text); font-weight: 600; }
+    .program-meta-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; flex: 2;
+    }
+    .program-meta-box {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 16px; text-align: center;
+    }
+    .program-meta-num {
+      font-size: 26px; font-weight: 900;
+      font-family: 'JetBrains Mono', monospace; line-height: 1;
+    }
+    .program-meta-label {
+      font-size: 10px; font-weight: 600; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--subtle); margin-top: 4px;
+    }
+    .program-bar-section { margin-bottom: 28px; }
+    .program-bar-bg {
+      height: 14px; background: var(--border); border-radius: 99px; overflow: hidden;
+      margin-bottom: 8px; position: relative;
+    }
+    .program-bar-done {
+      height: 100%; background: linear-gradient(90deg, #38bdf8, #a78bfa);
+      border-radius: 99px; transition: width 1s cubic-bezier(0.4,0,0.2,1);
+      position: absolute; left: 0; top: 0;
+    }
+    .program-bar-inprog {
+      height: 100%; background: #fbbf2466;
+      border-radius: 0 99px 99px 0; transition: width 1s cubic-bezier(0.4,0,0.2,1);
+      position: absolute; top: 0;
+    }
+    .program-bar-legend {
+      display: flex; gap: 20px; font-size: 11px; color: var(--subtle);
+    }
+    .legend-dot {
+      display: inline-block; width: 8px; height: 8px;
+      border-radius: 50%; margin-right: 5px; vertical-align: middle;
+    }
+    .program-weeks-title {
+      font-size: 11px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--subtle); margin-bottom: 14px;
+    }
+    .program-weeks-grid {
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px;
+    }
+    .program-week-box {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 12px; text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .program-week-box.current-week {
+      border-color: #a78bfa66;
+      box-shadow: 0 0 0 1px #a78bfa44;
+    }
+    .program-week-box.current-week::before {
+      content: 'NOW';
+      position: absolute; top: 6px; right: 6px;
+      font-size: 8px; font-weight: 800; letter-spacing: 1px;
+      color: #a78bfa; background: #a78bfa1a;
+      padding: 2px 5px; border-radius: 4px;
+    }
+    .program-week-fill {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: linear-gradient(to top, var(--week-color), transparent);
+      opacity: 0.15; transition: height 0.8s ease;
+    }
+    .pw-week-label { font-size: 10px; font-weight: 700; color: var(--subtle); margin-bottom: 6px; }
+    .pw-pct {
+      font-size: 20px; font-weight: 900;
+      font-family: 'JetBrains Mono', monospace; line-height: 1;
+    }
+    .pw-tasks { font-size: 10px; color: var(--subtle); margin-top: 4px; }
+
+    /* ── LEADERBOARD ── */
+    .leaderboard {
+      display: flex; gap: 12px; margin-bottom: 40px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 20px 24px; align-items: center;
+    }
+    .lb-title {
+      font-size: 11px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--subtle);
+      white-space: nowrap; margin-right: 8px;
+    }
+    .lb-players { display: flex; gap: 16px; flex: 1; }
+    .lb-player {
+      flex: 1; display: flex; align-items: center; gap: 12px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 16px;
+      position: relative; overflow: hidden;
+    }
+    .lb-player::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    }
+    .lb-rank {
+      font-size: 22px; font-weight: 900; color: var(--muted);
+      font-family: 'JetBrains Mono', monospace; min-width: 28px;
+    }
+    .lb-rank.gold   { color: #fbbf24; }
+    .lb-rank.silver { color: #94a3b8; }
+    .lb-rank.bronze { color: #d97706; }
+    .lb-avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 16px; flex-shrink: 0;
+    }
+    .lb-info { flex: 1; min-width: 0; }
+    .lb-name { font-weight: 700; font-size: 14px; }
+    .lb-progress-wrap { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+    .lb-bar-bg { flex: 1; height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .lb-bar-fill { height: 100%; border-radius: 99px; transition: width 0.8s ease; }
+    .lb-pct {
+      font-size: 11px; font-weight: 700;
+      font-family: 'JetBrains Mono', monospace; color: var(--subtle);
+      min-width: 30px; text-align: right;
+    }
+    .lb-level-badge {
+      font-size: 10px; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; padding: 3px 8px;
+      border-radius: 99px; border: 1px solid; white-space: nowrap;
+    }
+
+    /* ── PLAYER CARDS ── */
+    .cards-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+    }
+    .player-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; overflow: hidden;
+    }
+    .card-header {
+      padding: 24px 24px 20px; border-bottom: 1px solid var(--border);
+    }
+    .card-hero { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+    .avatar-ring {
+      width: 56px; height: 56px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 900; flex-shrink: 0;
+    }
+    .player-info { flex: 1; }
+    .player-name { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 2px; }
+    .player-role { font-size: 12px; color: var(--subtle); }
+    .level-badge-large {
+      font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; padding: 4px 10px;
+      border-radius: 99px; border: 1px solid; display: inline-block; margin-top: 4px;
+    }
+    .xp-section { margin-bottom: 4px; }
+    .xp-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+    .xp-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--subtle); }
+    .xp-value { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; }
+    .xp-bar-bg { height: 10px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .xp-bar-fill { height: 100%; border-radius: 99px; transition: width 1s cubic-bezier(0.4,0,0.2,1); }
+    .xp-sublabel { margin-top: 6px; font-size: 11px; color: var(--subtle); }
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+    .stat-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 12px; text-align: center;
+    }
+    .stat-num {
+      font-size: 22px; font-weight: 900;
+      font-family: 'JetBrains Mono', monospace; line-height: 1;
+    }
+    .stat-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--subtle); margin-top: 3px; }
+
+    /* ── WEEK SECTIONS ── */
+    .weeks-section { padding: 20px 24px; }
+    .weeks-section-title {
+      font-size: 11px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--subtle); margin-bottom: 16px;
+    }
+    .week-block { margin-bottom: 20px; }
+    .week-block:last-child { margin-bottom: 0; }
+    .week-header-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .week-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .week-label { font-size: 12px; font-weight: 700; letter-spacing: 0.5px; }
+    .week-progress-mini { flex: 1; height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .week-progress-fill { height: 100%; border-radius: 99px; transition: width 0.8s ease; }
+    .week-count { font-size: 11px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--subtle); white-space: nowrap; }
+
+    /* ── TASKS ── */
+    .task-list { display: flex; flex-direction: column; gap: 4px; }
+    .task-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 10px; border-radius: 8px;
+      background: var(--surface); border: 1px solid var(--border);
+      font-size: 12px;
+    }
+    .task-item.done { opacity: 0.45; }
+    .task-item.done .task-name { text-decoration: line-through; }
+    .task-item.inprogress { border-color: #fbbf2440; background: #fbbf2408; }
+    .task-check {
+      width: 16px; height: 16px; border-radius: 4px;
+      border: 2px solid var(--muted); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .task-check.done-check   { border-color: #4ade80; background: #4ade8022; }
+    .task-check.progress-check { border-color: #fbbf24; background: #fbbf2422; }
+    .task-name { flex: 1; color: var(--text); }
+    .task-tag {
+      font-size: 10px; font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 2px 6px; border-radius: 4px; flex-shrink: 0;
+      text-decoration: none !important;
+      cursor: pointer;
+    }
+    .task-tag:hover { opacity: 0.8; }
+
+    /* ── FOOTER ── */
+    .footer { text-align: center; margin-top: 48px; font-size: 12px; color: var(--muted); }
+    .footer a { color: var(--subtle); text-decoration: none; }
+    .footer a:hover { color: var(--text); }
+
+    /* ── REFRESH INDICATOR ── */
+    .refresh-info { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 32px; }
+    .refresh-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: #4ade80;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+    .refresh-text { font-size: 12px; color: var(--muted); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 1100px) {
+      .cards-grid { grid-template-columns: 1fr; }
+      .leaderboard { flex-direction: column; }
+      .lb-players { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Fetching training data from Jira...</div>
+</div>
+
+<!-- Error banner -->
+<div id="error-banner">
+  <div class="error-icon">⚠</div>
+  <div id="error-msg">Could not connect to Jira.</div>
+  <button onclick="loadAndRender()">Retry</button>
+</div>
+
+<div class="header">
+  <div class="header-label">POS Implementation · Onboarding</div>
+  <h1>Training Progress Dashboard</h1>
+  <div class="subtitle">
+    Last synced: <span id="last-synced">—</span>
+    &nbsp;·&nbsp; 5-week program &nbsp;·&nbsp; 3 trainees
+  </div>
+</div>
+
+<div id="program-overview"></div>
+
+<div class="leaderboard" id="leaderboard">
+  <div class="lb-title">Ranking</div>
+  <div id="leaderboard-content" class="lb-players"></div>
+</div>
+
+<div class="cards-grid" id="cards-grid"></div>
+
+<div class="refresh-info">
+  <div class="refresh-dot"></div>
+  <div class="refresh-text">Auto-refreshes every 60 seconds</div>
+</div>
+
+<div class="footer">
+  Data from Jira &nbsp;·&nbsp;
+  <a href="https://mews.atlassian.net/jira/core/projects/POTW" target="_blank">POTW (William)</a> &nbsp;·&nbsp;
+  <a href="https://mews.atlassian.net/jira/core/projects/TRAIN/board" target="_blank">TRAIN (Eduardo)</a> &nbsp;·&nbsp;
+  <a href="https://mews.atlassian.net/jira/core/projects/POTE/board" target="_blank">POTE (Eloisa)</a>
+  <br><br>
+  Recruit (0%) → Explorer (20%) → Apprentice (40%) → Specialist (60%) → Expert (80%) → Champion (100%)
+</div>
+
+<script>
+  // ── Config ──────────────────────────────────────────────────────────────────
+  const WEEK_ORDER = ['W1', 'W1/W2', 'W2', 'W3', 'W4', 'W5'];
+
+  const WEEK_META = {
+    'W1':    { label: 'Week 1',   color: '#38bdf8' },
+    'W1/W2': { label: 'Week 1–2', color: '#60a5fa' },
+    'W2':    { label: 'Week 2',   color: '#34d399' },
+    'W3':    { label: 'Week 3',   color: '#a78bfa' },
+    'W4':    { label: 'Week 4',   color: '#fb923c' },
+    'W5':    { label: 'Week 5',   color: '#f43f5e' },
+    'Other': { label: 'Other',    color: '#64748b' },
+  };
+
+  const LEVELS = [
+    { min: 100, num: 6, title: 'Champion',   next: null },
+    { min: 80,  num: 5, title: 'Expert',     next: 100 },
+    { min: 60,  num: 4, title: 'Specialist', next: 80 },
+    { min: 40,  num: 3, title: 'Apprentice', next: 60 },
+    { min: 20,  num: 2, title: 'Explorer',   next: 40 },
+    { min: 0,   num: 1, title: 'Recruit',    next: 20 },
+  ];
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  function pct(player) {
+    return player.stats.total ? Math.round((player.stats.done / player.stats.total) * 100) : 0;
+  }
+
+  function getLevel(donePct) {
+    return LEVELS.find(l => donePct >= l.min);
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function groupByWeek(tasks) {
+    const groups = {};
+    for (const t of tasks) {
+      const w = WEEK_ORDER.includes(t.week) ? t.week : 'Other';
+      (groups[w] = groups[w] || []).push(t);
+    }
+    const sorted = {};
+    for (const w of [...WEEK_ORDER, 'Other']) {
+      if (groups[w]) sorted[w] = groups[w];
+    }
+    return sorted;
+  }
+
+  // ── Renderers ────────────────────────────────────────────────────────────────
+  function renderTaskItem(task) {
+    const isDone       = task.status === 'done';
+    const isInProgress = task.status === 'inprogress';
+    const wm = WEEK_META[task.week] || WEEK_META['Other'];
+    const checkClass = isDone ? 'done-check' : isInProgress ? 'progress-check' : '';
+    const checkInner = isDone
+      ? `<svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+           <path d="M1 4l3 3 5-6" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+         </svg>`
+      : isInProgress
+      ? `<div style="width:6px;height:6px;border-radius:50%;background:#fbbf24;margin:auto;"></div>`
+      : '';
+
+    return `
+      <div class="task-item ${isDone ? 'done' : isInProgress ? 'inprogress' : ''}">
+        <div class="task-check ${checkClass}">${checkInner}</div>
+        <div class="task-name">${escHtml(task.summary)}</div>
+        <a href="${escHtml(task.url)}" target="_blank"
+           class="task-tag"
+           style="background:${wm.color}1a;color:${wm.color};">${escHtml(task.week)}</a>
+      </div>`;
+  }
+
+  function renderPlayerCard(player) {
+    const p        = pct(player);
+    const xp       = player.stats.done * 100;
+    const totalXp  = player.stats.total * 100;
+    const level    = getLevel(p);
+    const nextMsg  = level.next !== null
+      ? `next level at ${level.next}% (${Math.ceil(player.stats.total * level.next / 100)} tasks)`
+      : 'Max level reached!';
+    const groups   = groupByWeek(player.tasks);
+
+    const weeksHtml = Object.entries(groups).map(([week, tasks]) => {
+      const wm       = WEEK_META[week] || WEEK_META['Other'];
+      const doneCnt  = tasks.filter(t => t.status === 'done').length;
+      const weekPct  = tasks.length ? Math.round((doneCnt / tasks.length) * 100) : 0;
+      return `
+        <div class="week-block">
+          <div class="week-header-row">
+            <div class="week-dot" style="background:${wm.color};"></div>
+            <div class="week-label" style="color:${wm.color};">${wm.label}</div>
+            <div class="week-progress-mini">
+              <div class="week-progress-fill" style="width:${weekPct}%;background:${wm.color};"></div>
+            </div>
+            <div class="week-count">${doneCnt} / ${tasks.length}</div>
+          </div>
+          <div class="task-list">${tasks.map(renderTaskItem).join('')}</div>
+        </div>`;
+    }).join('');
+
+    const borderColor = player.color;
+    return `
+      <div class="player-card" style="border-top:3px solid ${borderColor};">
+        <div class="card-header">
+          <div class="card-hero">
+            <div class="avatar-ring" style="background:${borderColor}26;color:${borderColor};">
+              ${escHtml(player.name[0])}
+            </div>
+            <div class="player-info">
+              <div class="player-name" style="color:${borderColor};">${escHtml(player.name)}</div>
+              <div class="player-role">POS Implementation · ${escHtml(player.project)}</div>
+              <div class="level-badge-large"
+                   style="color:${borderColor};border-color:${borderColor}44;">
+                Level ${level.num} · ${level.title}
+              </div>
+            </div>
+          </div>
+
+          <div class="xp-section">
+            <div class="xp-header">
+              <div class="xp-label">XP Progress</div>
+              <div class="xp-value" style="color:${borderColor};">${xp} / ${totalXp} XP</div>
+            </div>
+            <div class="xp-bar-bg">
+              <div class="xp-bar-fill" style="width:${p}%;background:${borderColor};"></div>
+            </div>
+            <div class="xp-sublabel">${player.stats.done} tasks completed · ${nextMsg}</div>
+          </div>
+
+          <div class="stats-row">
+            <div class="stat-box">
+              <div class="stat-num" style="color:#4ade80;">${player.stats.done}</div>
+              <div class="stat-label">Done</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-num" style="color:#fbbf24;">${player.stats.inProgress}</div>
+              <div class="stat-label">In Progress</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-num" style="color:var(--subtle);">${player.stats.todo}</div>
+              <div class="stat-label">To Do</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="weeks-section">
+          <div class="weeks-section-title">Training Roadmap</div>
+          ${weeksHtml}
+        </div>
+      </div>`;
+  }
+
+  function renderLeaderboard(players) {
+    const ranked = [...players].sort((a, b) => {
+      const diff = pct(b) - pct(a);
+      return diff !== 0 ? diff : b.stats.done - a.stats.done;
+    });
+
+    return ranked.map((player, i) => {
+      const p      = pct(player);
+      const level  = getLevel(p);
+      const rank   = i + 1;
+      const rankCls = rank === 1 ? 'gold' : rank === 2 ? 'silver' : 'bronze';
+      return `
+        <div class="lb-player" style="border-top:2px solid ${player.color}40;">
+          <div class="lb-rank ${rankCls}">#${rank}</div>
+          <div class="lb-avatar" style="background:${player.color}22;color:${player.color};">
+            ${escHtml(player.name[0])}
+          </div>
+          <div class="lb-info">
+            <div class="lb-name">${escHtml(player.name)}</div>
+            <div class="lb-progress-wrap">
+              <div class="lb-bar-bg">
+                <div class="lb-bar-fill" style="width:${p}%;background:${player.color};"></div>
+              </div>
+              <div class="lb-pct">${p}%</div>
+            </div>
+          </div>
+          <div class="lb-level-badge" style="color:${player.color};border-color:${player.color}44;">
+            Lv ${level.num}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // ── Program Overview ─────────────────────────────────────────────────────────
+  const WEEK_COLORS = {
+    'W1': '#38bdf8', 'W1/W2': '#60a5fa', 'W2': '#34d399',
+    'W3': '#a78bfa', 'W4': '#fb923c',    'W5': '#f43f5e',
+  };
+
+  function renderProgramOverview(prog) {
+    const totalPct    = prog.totalTasks ? Math.round((prog.totalDone  / prog.totalTasks) * 100) : 0;
+    const inProgPct   = prog.totalTasks ? Math.round((prog.totalInProg / prog.totalTasks) * 100) : 0;
+    const inProgLeft  = Math.min(inProgPct, 100 - totalPct);
+    const doneWidth   = totalPct;
+    const inProgWidth = totalPct + inProgLeft;
+
+    // Week boxes — merge W1 and W1/W2 display into weeks 1-5
+    const DISPLAY_WEEKS = [
+      { key: 'W1',    weekNum: 1, label: 'Week 1'   },
+      { key: 'W1/W2', weekNum: 1, label: 'Wk 1–2'  },
+      { key: 'W2',    weekNum: 2, label: 'Week 2'   },
+      { key: 'W3',    weekNum: 3, label: 'Week 3'   },
+      { key: 'W4',    weekNum: 4, label: 'Week 4'   },
+      { key: 'W5',    weekNum: 5, label: 'Week 5'   },
+    ];
+
+    const weekBoxes = DISPLAY_WEEKS.map(w => {
+      const ws    = prog.weeklyStats && prog.weeklyStats[w.key];
+      const total = ws ? ws.total : 0;
+      const done  = ws ? ws.done  : 0;
+      const wp    = total ? Math.round((done / total) * 100) : 0;
+      const color = WEEK_COLORS[w.key] || '#64748b';
+      const isCur = w.weekNum === prog.currentWeek && w.key !== 'W1/W2';
+      if (!total) return '';
+      return `
+        <div class="program-week-box ${isCur ? 'current-week' : ''}" style="--week-color:${color};">
+          <div class="program-week-fill" style="height:${wp}%;"></div>
+          <div class="pw-week-label" style="color:${color};">${w.label}</div>
+          <div class="pw-pct" style="color:${wp === 100 ? '#4ade80' : color};">${wp}%</div>
+          <div class="pw-tasks">${done}/${total} tasks</div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="program-overview">
+        <div class="program-top">
+          <div class="program-title-block">
+            <div class="program-section-label">Program Progress</div>
+            <div class="program-big-pct">${totalPct}%</div>
+            <div class="program-big-sub">
+              <span>${prog.totalDone}</span> of <span>${prog.totalTasks}</span> tasks done
+              &nbsp;·&nbsp; Week <span>${prog.currentWeek}</span> of 5
+              &nbsp;·&nbsp; Day <span>${prog.daysIn + 1}</span>
+            </div>
+          </div>
+          <div class="program-meta-grid">
+            <div class="program-meta-box">
+              <div class="program-meta-num" style="color:#4ade80;">${prog.totalDone}</div>
+              <div class="program-meta-label">Completed</div>
+            </div>
+            <div class="program-meta-box">
+              <div class="program-meta-num" style="color:#fbbf24;">${prog.totalInProg}</div>
+              <div class="program-meta-label">In Progress</div>
+            </div>
+            <div class="program-meta-box">
+              <div class="program-meta-num" style="color:var(--subtle);">${prog.totalTodo}</div>
+              <div class="program-meta-label">To Do</div>
+            </div>
+            <div class="program-meta-box">
+              <div class="program-meta-num" style="color:#a78bfa;">${prog.totalTasks}</div>
+              <div class="program-meta-label">Total Tasks</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="program-bar-section">
+          <div class="program-bar-bg">
+            <div class="program-bar-done"  style="width:${doneWidth}%;"></div>
+            <div class="program-bar-inprog" style="left:${doneWidth}%;width:${inProgLeft}%;"></div>
+          </div>
+          <div class="program-bar-legend">
+            <span><span class="legend-dot" style="background:#38bdf8;"></span>Completed (${totalPct}%)</span>
+            <span><span class="legend-dot" style="background:#fbbf24;"></span>In Progress (${inProgLeft}%)</span>
+            <span><span class="legend-dot" style="background:var(--border);"></span>To Do (${100 - totalPct - inProgLeft}%)</span>
+          </div>
+        </div>
+
+        <div class="program-weeks-title">Week-by-week breakdown (all trainees combined)</div>
+        <div class="program-weeks-grid">${weekBoxes}</div>
+      </div>`;
+  }
+
+  // ── Main ─────────────────────────────────────────────────────────────────────
+  function renderDashboard(data) {
+    const syncedEl = document.getElementById('last-synced');
+    if (data.lastUpdated) {
+      const d = new Date(data.lastUpdated);
+      syncedEl.textContent = d.toLocaleString('en-GB', {
+        day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+    }
+
+    if (data.program) {
+      document.getElementById('program-overview').innerHTML =
+        renderProgramOverview(data.program);
+    }
+
+    document.getElementById('leaderboard-content').innerHTML =
+      renderLeaderboard(data.players);
+
+    document.getElementById('cards-grid').innerHTML =
+      data.players.map(renderPlayerCard).join('');
+  }
+
+  async function loadAndRender() {
+    const errorBanner = document.getElementById('error-banner');
+    errorBanner.style.display = 'none';
+
+    try {
+      const res = await fetch('/api/data');
+      if (!res.ok) throw new Error(`Jira API returned HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      renderDashboard(data);
+      document.getElementById('loading-overlay').style.display = 'none';
+    } catch (e) {
+      document.getElementById('loading-overlay').style.display = 'none';
+      errorBanner.style.display = 'flex';
+      document.getElementById('error-msg').textContent = e.message;
+      console.error('Dashboard error:', e);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadAndRender();
+    setInterval(loadAndRender, 60_000);
+  });
+</script>
+</body>
+</html>
