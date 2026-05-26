@@ -19,7 +19,7 @@ export default async function handler(req, res) {
 
   const auth = Buffer.from(`${email}:${token}`).toString("base64");
   const jql  = encodeURIComponent("project IN (POTW, TRAIN, POTE) ORDER BY project ASC, created ASC");
-  const url  = `${JIRA_BASE}/rest/api/3/search?jql=${jql}&fields=summary,status&maxResults=200`;
+  const url  = `${JIRA_BASE}/rest/api/3/search/jql?jql=${jql}&fields=summary,status&maxResults=200`;
 
   let jiraResp;
   try {
